@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Fractal Plane</title>
+    <style>
+        body {margin:0; padding:0;}
+        canvas {width:100%; height:100%;}
+    </style>
+</head>
+
+<body>
+    <script src="three.min.js"></script>
+    <script src="noise.js"></script>
+    <script language="javascript" type="text/javascript">
+        var camera, scene, renderer;
+        var mesh, geom, vertices;
+        var noise;
+        var w = 512/4;
+        var h = 512/4;
+        var pw = 100.0;
+        var ph = 100.0;
+
+        init();
+        animate();
+
+        function init(){
+            noise = new Noise();
+            scene = new THREE.Scene();
+
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight,
+                                                 0.1, 10000);
+            camera.position.set(0,70,150);
+            camera.lookAt(new THREE.Vector3(0,0,0));
+            scene.add(camera);
+  
+            renderer = new THREE.WebGLRenderer({antialias:true});
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0xDDDDDD,1);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.body.appendChild(renderer.domElement);
+
+            geom = new THREE.PlaneBufferGeometry(pw, ph, w-1, h-1);
+            geom.rotateX(-Math.PI/2);
+            vertices = geom.attributes.position.array;
+
+            var mat = [
+                new THREE.MeshPhongMaterial({ color: 0xffffff}),
+                new THREE.MeshBasicMaterial({ color: 0x3388FF, wireframe: true, transparent: true })
+            ];
+
+
+            mesh = THREE.SceneUtils.createMultiMaterialObject(geom, mat);
+            scene.add(mesh);
+
+            var light = new THREE.PointLight(0xFFFFFF);
+            light.position.set(0, 50, 0);
+            scene.add(light);
+
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+        function onWindowResize(){
+            camera.aspect = window.innerWidth/window.innerHeight;
+            camera.updateProjectionMatrix();
+
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function updateHeight(y, amp, freq){
+            for(var i=0 ; i<mesh.children.length ; i++){
+                mesh.children[i].geometry.attributes.position.needsUpdate = true;
+            }
+            vertices = geom.attributes.position.array;
+            var fy = freq*y;
+            for( var i=0, j=0; i<vertices.length; i++, j+=3){
+                var x = vertices[j]/pw/2; 
+                var z = vertices[j+2]/ph/2; 
+                var f2 = 2*freq;
+                var f4 = 8*freq;
+                var f8 = 32*freq;
+                vertices[j+1] = amp*noise.noise(freq*x,fy,freq*z)
+                                +0.25*amp*noise.noise(f2*x,fy+0.01*f2*y,f2*z)
+                                +0.125*amp*noise.noise(f4*x,fy+0.01*f4*y,f4*z)
+                                +0.0625*amp*noise.noise(f8*x,fy+0.01*f8*y,f8*z);
+                
+            }
+        }
+
+        var duration = 5000; //ms
+        var pt = Date.now();
+        var ct = pt;
+        var dt = 0;
+        var angle = 0;
+        var noise_y = 0;
+        function animate(){
+            ct = Date.now();
+            dt = (ct-pt)/duration;
+
+            requestAnimationFrame(animate);
+            updateHeight(noise_y, 7.5, 7.5);
+            renderer.render(scene, camera);
+
+            angle += 0.25*Math.PI*dt;
+            noise_y += 0.5*dt;
+            mesh.rotation.y = angle;
+
+            pt = ct;
+        }
+
+    </script>
+</body>
+
+</html>
